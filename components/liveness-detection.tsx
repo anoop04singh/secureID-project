@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Loader2, Camera, AlertCircle, X } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import * as faceapi from "@vladmandic/face-api"
 
 interface LivenessDetectionProps {
   onComplete: (success: boolean) => void
@@ -17,7 +16,7 @@ export function LivenessDetection({ onComplete, isProcessing = false }: Liveness
   const [isDetecting, setIsDetecting] = useState(false)
   const [cameraActive, setCameraActive] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [instructions, setInstructions] = useState<string>("Loading face detection models...")
+  const [instructions, setInstructions] = useState<string>("Initializing face detection...")
   const [detectionProgress, setDetectionProgress] = useState(0)
   const [detectionSteps, setDetectionSteps] = useState<{
     faceDetected: boolean
@@ -34,6 +33,7 @@ export function LivenessDetection({ onComplete, isProcessing = false }: Liveness
   const streamRef = useRef<MediaStream | null>(null)
   const animationFrameRef = useRef<number | null>(null)
   const modelsLoadedRef = useRef(false)
+  const faceApiRef = useRef<any>(null)
 
   // Previous face landmarks for tracking changes
   const prevEyeAspectRatioRef = useRef<number | null>(null)
@@ -43,10 +43,30 @@ export function LivenessDetection({ onComplete, isProcessing = false }: Liveness
 
   // Load face-api models
   useEffect(() => {
+    // Only run in browser environment
+    if (typeof window === "undefined") return
+
+    async function loadFaceApi() {
+      try {
+        // Dynamically import face-api.js
+        const faceapi = await import("@vladmandic/face-api")
+        faceApiRef.current = faceapi
+        return faceapi
+      } catch (error) {
+        console.error("Error importing face-api:", error)
+        setError("Failed to load face detection library. Please refresh and try again.")
+        setIsLoading(false)
+        return null
+      }
+    }
+
     async function loadModels() {
       try {
         setIsLoading(true)
         setInstructions("Loading face detection models...")
+
+        const faceapi = await loadFaceApi()
+        if (!faceapi) return
 
         // Set the models path
         const MODEL_URL = "/models"
@@ -177,11 +197,12 @@ export function LivenessDetection({ onComplete, isProcessing = false }: Liveness
 
   // Detect face and perform liveness checks
   const detectFace = async () => {
-    if (!videoRef.current || !canvasRef.current || !cameraActive) {
+    if (!videoRef.current || !canvasRef.current || !cameraActive || !faceApiRef.current) {
       return
     }
 
     try {
+      const faceapi = faceApiRef.current
       const video = videoRef.current
       const canvas = canvasRef.current
       const displaySize = { width: video.videoWidth, height: video.videoHeight }
@@ -194,7 +215,9 @@ export function LivenessDetection({ onComplete, isProcessing = false }: Liveness
 
       // Clear canvas
       const ctx = canvas.getContext("2d")
-      ctx?.clearRect(0, 0, canvas.width, canvas.height)
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+      }
 
       // Draw detections
       const resizedDetections = faceapi.resizeResults(detections, displaySize)
@@ -288,7 +311,7 @@ export function LivenessDetection({ onComplete, isProcessing = false }: Liveness
   }
 
   // Calculate eye aspect ratio for blink detection
-  const calculateEyeAspectRatio = (eye: faceapi.Point[]) => {
+  const calculateEyeAspectRatio = (eye: any) => {
     // Vertical eye landmarks distances
     const v1 = Math.sqrt(Math.pow(eye[1].x - eye[5].x, 2) + Math.pow(eye[1].y - eye[5].y, 2))
     const v2 = Math.sqrt(Math.pow(eye[2].x - eye[4].x, 2) + Math.pow(eye[2].y - eye[4].y, 2))

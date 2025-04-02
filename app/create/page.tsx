@@ -8,13 +8,14 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
 import { useWallet } from "@/hooks/use-wallet"
 import { QrScanner } from "@/components/qr-scanner"
-import { LivenessDetection } from "@/components/liveness-detection"
+import { ClientOnlyLiveness } from "@/components/client-only-liveness"
 import { generateZkProof } from "@/lib/zk-proofs"
 import { storeIdentityProof } from "@/lib/contract-interactions"
 import { Loader2, AlertCircle } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 export default function CreateIdentity() {
+  // Rest of the component remains the same
   const { toast } = useToast()
   const { isConnected, connect, address, signer } = useWallet()
   const [step, setStep] = useState(1)
@@ -27,7 +28,9 @@ export default function CreateIdentity() {
   const [error, setError] = useState<string | null>(null)
   const [livenessVerified, setLivenessVerified] = useState(false)
 
+  // All the handler functions remain the same
   const handleQrCodeScanned = async (data: any) => {
+    // Same implementation
     setIsProcessing(true)
     setError(null)
     try {
@@ -53,6 +56,7 @@ export default function CreateIdentity() {
   }
 
   const verifyLastFourDigits = () => {
+    // Same implementation
     setError(null)
     if (!qrData || !qrData.referenceId) {
       setError("No identity data found. Please scan your ID again.")
@@ -84,6 +88,7 @@ export default function CreateIdentity() {
   }
 
   const handleLivenessComplete = (success: boolean) => {
+    // Same implementation
     if (success) {
       setLivenessVerified(true)
       toast({
@@ -102,6 +107,7 @@ export default function CreateIdentity() {
   }
 
   const generateProof = async () => {
+    // Same implementation
     if (!identityData) return
 
     setIsProcessing(true)
@@ -138,6 +144,7 @@ export default function CreateIdentity() {
   }
 
   const storeProofOnChain = async () => {
+    // Same implementation
     if (!zkProof || !signer) return
 
     setIsProcessing(true)
@@ -238,7 +245,7 @@ export default function CreateIdentity() {
                 <p className="text-sm text-muted-foreground">Step 3: Liveness Detection</p>
               </div>
 
-              <LivenessDetection onComplete={handleLivenessComplete} isProcessing={isProcessing} />
+              <ClientOnlyLiveness onComplete={handleLivenessComplete} isProcessing={isProcessing} />
             </div>
           )}
 
